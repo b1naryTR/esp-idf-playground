@@ -9,12 +9,36 @@
 #include "esp_http_server.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "driver/temperature_sensor.h"
 
 #define EXAMPLE_ESP_WIFI_SSID      "test-ap-wpa3"
 #define EXAMPLE_ESP_WIFI_PASS      "testtest"
 #define EXAMPLE_MAX_STA_CONN       6
 
 static const char *TAG = "wifi softAP";
+static temperature_sensor_handle_t temp_handle;
+
+static esp_err_t temp_get_handler(httpd_req_t *req)
+{
+    float tsens_out;
+    ESP_ERROR_CHECK(temperature_sensor_get_celsius(temp_handle, &tsens_out));
+    char *resp_str = (char *)malloc(128);
+    sprintf(resp_str, "{\"temperature\": %f}", tsens_out);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp_str, strlen(resp_str));
+
+    free(resp_str);
+
+    return ESP_OK;
+}
+
+static const httpd_uri_t temp = {
+    .uri       = "/temp",
+    .method    = HTTP_GET,
+    .handler   = temp_get_handler,
+    .user_ctx  = NULL
+};
 
 static esp_err_t index_get_handler(httpd_req_t *req)
 {
@@ -36,6 +60,7 @@ static httpd_handle_t start_webserver(void)
 
     httpd_handle_t server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
+        httpd_register_uri_handler(server, &temp);
         httpd_register_uri_handler(server, &mainpage);
     }
     return server;
@@ -101,6 +126,12 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
+
+    //init temp sensor
+    temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 50);
+    temperature_sensor_install(&temp_sensor_config, &temp_handle);
+    temperature_sensor_enable(temp_handle);
+
 
     // Start the web server
     start_webserver();
