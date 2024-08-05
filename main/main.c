@@ -11,9 +11,9 @@
 #include "lwip/sys.h"
 #include "driver/temperature_sensor.h"
 
-#define EXAMPLE_ESP_WIFI_SSID      "test-ap-wpa3"
-#define EXAMPLE_ESP_WIFI_PASS      "testtest"
-#define EXAMPLE_MAX_STA_CONN       6
+#define ESP_WIFI_SSID      "test-ap-wpa3"
+#define ESP_WIFI_PASS      "testtest"
+#define MAX_STA_CONN       6
 
 static const char *TAG = "wifi softAP";
 static temperature_sensor_handle_t temp_handle;
@@ -42,8 +42,9 @@ static const httpd_uri_t temp = {
 
 static esp_err_t index_get_handler(httpd_req_t *req)
 {
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, "<h1>Hello from ESP32!</h1>", -1);
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", "/temp");
+    httpd_resp_send(req, NULL, 0);
     return ESP_OK;
 }
 
@@ -91,10 +92,10 @@ void wifi_init_softap(void)
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .ssid = ESP_WIFI_SSID,
+            .ssid_len = strlen(ESP_WIFI_SSID),
+            .password = ESP_WIFI_PASS,
+            .max_connection = MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA3_PSK,
             .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
             .pmf_cfg = {
@@ -102,15 +103,12 @@ void wifi_init_softap(void)
             },
         },
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
-    }
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s", EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s", ESP_WIFI_SSID, ESP_WIFI_PASS);
 }
 
 void app_main(void)
